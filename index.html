@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Найди пару</title>
+  <style>
+    :root {
+      --lilac-50: #f8f4ff;
+      --lilac-100: #efe6ff;
+      --lilac-200: #dcc9ff;
+      --lilac-300: #c4a6f5;
+      --lilac-400: #a87eeb;
+      --lilac-500: #8b5cf6;
+      --lilac-600: #7c3aed;
+      --lilac-700: #6d28d9;
+      --lilac-800: #5b21b6;
+      --lilac-900: #4c1d95;
+      --card-back: linear-gradient(145deg, #9b6dff 0%, #7c3aed 55%, #6d28d9 100%);
+      --surface: rgba(255, 255, 255, 0.72);
+      --text: #3b2066;
+      --text-muted: #6b4f8f;
+      --shadow: 0 12px 40px rgba(109, 40, 217, 0.18);
+      --radius: 18px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100dvh;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 10%, rgba(196, 166, 245, 0.55), transparent 55%),
+        radial-gradient(ellipse 70% 50% at 90% 20%, rgba(167, 139, 250, 0.45), transparent 50%),
+        radial-gradient(ellipse 60% 50% at 50% 100%, rgba(139, 92, 246, 0.25), transparent 55%),
+        linear-gradient(160deg, var(--lilac-50), var(--lilac-100) 40%, #e9ddff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: min(100%, 520px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeUp 0.6s var(--ease) both;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    header {
+      text-align: center;
+    }
+
+    h1 {
+      font-size: clamp(1.75rem, 5vw, 2.35rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(120deg, var(--lilac-700), var(--lilac-500), #a78bfa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .stat {
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(167, 139, 250, 0.35);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: transform 0.25s var(--ease);
+    }
+
+    .stat:hover {
+      transform: translateY(-1px);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--lilac-700);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 650;
+      border-radius: 14px;
+      padding: 12px 18px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--lilac-500), var(--lilac-700));
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+      transition:
+        transform 0.2s var(--ease),
+        box-shadow 0.2s var(--ease),
+        filter 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+      box-shadow: 0 12px 28px rgba(124, 58, 237, 0.42);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:focus-visible {
+      outline: 3px solid rgba(167, 139, 250, 0.7);
+      outline-offset: 2px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(8px, 2.5vw, 14px);
+      perspective: 1000px;
+      padding: 4px;
+    }
+
+    .card {
+      position: relative;
+      aspect-ratio: 1;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      border-radius: calc(var(--radius) - 2px);
+      transform-style: preserve-3d;
+      transition: transform 0.55s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .card:focus-visible {
+      outline: 3px solid rgba(167, 139, 250, 0.85);
+      outline-offset: 3px;
+    }
+
+    .card.is-flipped,
+    .card.is-matched {
+      transform: rotateY(180deg);
+    }
+
+    .card.is-matched {
+      cursor: default;
+      animation: matchedPulse 0.55s var(--ease);
+    }
+
+    .card.is-matched .card-face--front {
+      box-shadow:
+        0 0 0 2px rgba(167, 139, 250, 0.9),
+        0 10px 28px rgba(109, 40, 217, 0.22);
+      background: linear-gradient(160deg, #ffffff, #f3ebff);
+    }
+
+    .card:disabled {
+      cursor: default;
+    }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      display: grid;
+      place-items: center;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      box-shadow: var(--shadow);
+      user-select: none;
+    }
+
+    .card-face--back {
+      background: var(--card-back);
+      color: rgba(255, 255, 255, 0.92);
+      font-size: clamp(1.4rem, 5vw, 1.9rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      overflow: hidden;
+    }
+
+    .card-face--back::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(255, 255, 255, 0.28);
+      background:
+        repeating-linear-gradient(
+          -35deg,
+          transparent,
+          transparent 8px,
+          rgba(255, 255, 255, 0.06) 8px,
+          rgba(255, 255, 255, 0.06) 16px
+        );
+      pointer-events: none;
+    }
+
+    .card-face--back::after {
+      content: "✦";
+      position: relative;
+      z-index: 1;
+      font-size: clamp(1.5rem, 6vw, 2rem);
+      opacity: 0.95;
+      text-shadow: 0 2px 10px rgba(76, 29, 149, 0.35);
+    }
+
+    .card-face--front {
+      background: linear-gradient(160deg, #ffffff, #f7f1ff);
+      transform: rotateY(180deg);
+      border: 1px solid rgba(196, 166, 245, 0.55);
+      font-size: clamp(1.8rem, 8vw, 2.75rem);
+    }
+
+    @keyframes matchedPulse {
+      0% {
+        transform: rotateY(180deg) scale(1);
+      }
+      45% {
+        transform: rotateY(180deg) scale(1.06);
+      }
+      100% {
+        transform: rotateY(180deg) scale(1);
+      }
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(76, 29, 149, 0.45);
+      backdrop-filter: blur(6px);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity 0.35s var(--ease),
+        visibility 0.35s var(--ease);
+      z-index: 20;
+    }
+
+    .overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      width: min(100%, 380px);
+      background: linear-gradient(180deg, #ffffff, #f4ecff);
+      border-radius: 22px;
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(76, 29, 149, 0.35);
+      border: 1px solid rgba(196, 166, 245, 0.55);
+      transform: translateY(18px) scale(0.96);
+      transition: transform 0.4s var(--ease);
+    }
+
+    .overlay.is-open .modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal h2 {
+      font-size: 1.65rem;
+      color: var(--lilac-800);
+      margin-bottom: 8px;
+    }
+
+    .modal p {
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+
+    .modal-stats {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 20px;
+      font-weight: 650;
+      color: var(--lilac-700);
+    }
+
+    .confetti {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      animation: bounce 1s ease infinite alternate;
+    }
+
+    @keyframes bounce {
+      from {
+        transform: translateY(0);
+      }
+      to {
+        transform: translateY(-6px);
+      }
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+
+    @media (max-width: 420px) {
+      .hud {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .hud .btn {
+        grid-column: 1 / -1;
+      }
+
+      body {
+        padding: 12px;
+        align-items: flex-start;
+        padding-top: max(12px, env(safe-area-inset-top));
+      }
+
+      .app {
+        gap: 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Найди пару</h1>
+      <p class="subtitle">Откройте все пары животных</p>
+    </header>
+
+    <div class="hud">
+      <div class="stat" aria-live="polite">
+        <span class="stat-label">Ходы</span>
+        <span class="stat-value" id="moves">0</span>
+      </div>
+      <div class="stat" aria-live="polite">
+        <span class="stat-label">Время</span>
+        <span class="stat-value" id="timer">00:00</span>
+      </div>
+      <button type="button" class="btn" id="newGameBtn">Новая игра</button>
+    </div>
+
+    <div
+      class="board"
+      id="board"
+      role="grid"
+      aria-label="Игровое поле 4 на 4"
+    ></div>
+
+    <footer>Откройте две одинаковые карточки</footer>
+  </div>
+
+  <div class="overlay" id="winOverlay" role="dialog" aria-modal="true" aria-labelledby="winTitle" hidden>
+    <div class="modal">
+      <div class="confetti" aria-hidden="true">🎉</div>
+      <h2 id="winTitle">Победа!</h2>
+      <p>Вы нашли все пары животных.</p>
+      <div class="modal-stats">
+        <span>Ходы: <strong id="winMoves">0</strong></span>
+        <span>Время: <strong id="winTime">00:00</strong></span>
+      </div>
+      <button type="button" class="btn" id="playAgainBtn">Новая игра</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const ANIMALS = ["🐶", "🐱", "🐰", "🦊", "🐻", "🐼", "🦁", "🐸"];
+      const MATCH_DELAY_MS = 1000;
+
+      const boardEl = document.getElementById("board");
+      const movesEl = document.getElementById("moves");
+      const timerEl = document.getElementById("timer");
+      const newGameBtn = document.getElementById("newGameBtn");
+      const playAgainBtn = document.getElementById("playAgainBtn");
+      const winOverlay = document.getElementById("winOverlay");
+      const winMoves = document.getElementById("winMoves");
+      const winTime = document.getElementById("winTime");
+
+      let cards = [];
+      let flipped = [];
+      let matchedCount = 0;
+      let moves = 0;
+      let locked = false;
+      let timerId = null;
+      let startedAt = null;
+      let elapsedSeconds = 0;
+      let mismatchTimeoutId = null;
+
+      function shuffle(array) {
+        const arr = array.slice();
+        for (let i = arr.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function formatTime(totalSeconds) {
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      }
+
+      function clearPendingActions() {
+        if (mismatchTimeoutId !== null) {
+          clearTimeout(mismatchTimeoutId);
+          mismatchTimeoutId = null;
+        }
+        if (timerId !== null) {
+          clearInterval(timerId);
+          timerId = null;
+        }
+      }
+
+      function updateMoves() {
+        movesEl.textContent = String(moves);
+      }
+
+      function updateTimerDisplay() {
+        timerEl.textContent = formatTime(elapsedSeconds);
+      }
+
+      function startTimer() {
+        if (timerId !== null) return;
+        startedAt = Date.now();
+        timerId = setInterval(() => {
+          elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+          updateTimerDisplay();
+        }, 250);
+      }
+
+      function stopTimer() {
+        if (timerId !== null) {
+          clearInterval(timerId);
+          timerId = null;
+        }
+        if (startedAt !== null) {
+          elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+          updateTimerDisplay();
+        }
+      }
+
+      function createDeck() {
+        const deck = shuffle([...ANIMALS, ...ANIMALS]);
+        return deck.map((emoji, index) => ({
+          id: index,
+          emoji,
+          matched: false,
+          element: null,
+        }));
+      }
+
+      function renderBoard() {
+        boardEl.innerHTML = "";
+        cards.forEach((card) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "card";
+          btn.setAttribute("aria-label", "Закрытая карточка");
+          btn.dataset.id = String(card.id);
+
+          btn.innerHTML = `
+            <span class="card-face card-face--back" aria-hidden="true"></span>
+            <span class="card-face card-face--front" aria-hidden="true">${card.emoji}</span>
+          `;
+
+          btn.addEventListener("click", () => onCardClick(card));
+          card.element = btn;
+          boardEl.appendChild(btn);
+        });
+      }
+
+      function setCardOpen(card, open) {
+        const el = card.element;
+        if (!el) return;
+        el.classList.toggle("is-flipped", open);
+        if (open) {
+          el.setAttribute("aria-label", `Открыта карточка ${card.emoji}`);
+        } else {
+          el.setAttribute("aria-label", "Закрытая карточка");
+        }
+      }
+
+      function setMatched(card) {
+        card.matched = true;
+        const el = card.element;
+        if (!el) return;
+        el.classList.add("is-matched");
+        el.classList.add("is-flipped");
+        el.disabled = true;
+        el.setAttribute("aria-label", `Найдена пара ${card.emoji}`);
+      }
+
+      function onCardClick(card) {
+        if (locked) return;
+        if (card.matched) return;
+        if (flipped.includes(card)) return;
+        if (flipped.length >= 2) return;
+
+        if (startedAt === null) {
+          startTimer();
+        }
+
+        setCardOpen(card, true);
+        flipped.push(card);
+
+        if (flipped.length < 2) return;
+
+        moves += 1;
+        updateMoves();
+        locked = true;
+
+        const [first, second] = flipped;
+
+        if (first.emoji === second.emoji) {
+          setMatched(first);
+          setMatched(second);
+          matchedCount += 2;
+          flipped = [];
+          locked = false;
+
+          if (matchedCount === cards.length) {
+            handleWin();
+          }
+          return;
+        }
+
+        mismatchTimeoutId = setTimeout(() => {
+          setCardOpen(first, false);
+          setCardOpen(second, false);
+          flipped = [];
+          locked = false;
+          mismatchTimeoutId = null;
+        }, MATCH_DELAY_MS);
+      }
+
+      function hideWin() {
+        winOverlay.classList.remove("is-open");
+        winOverlay.hidden = true;
+      }
+
+      function showWin() {
+        winMoves.textContent = String(moves);
+        winTime.textContent = formatTime(elapsedSeconds);
+        winOverlay.hidden = false;
+        requestAnimationFrame(() => {
+          winOverlay.classList.add("is-open");
+        });
+        playAgainBtn.focus();
+      }
+
+      function handleWin() {
+        stopTimer();
+        showWin();
+      }
+
+      function resetGame() {
+        clearPendingActions();
+        hideWin();
+
+        cards = createDeck();
+        flipped = [];
+        matchedCount = 0;
+        moves = 0;
+        locked = false;
+        startedAt = null;
+        elapsedSeconds = 0;
+
+        updateMoves();
+        updateTimerDisplay();
+        renderBoard();
+      }
+
+      newGameBtn.addEventListener("click", resetGame);
+      playAgainBtn.addEventListener("click", resetGame);
+
+      winOverlay.addEventListener("click", (event) => {
+        if (event.target === winOverlay) {
+          hideWin();
+        }
+      });
+
+      resetGame();
+    })();
+  </script>
+</body>
+</html>
